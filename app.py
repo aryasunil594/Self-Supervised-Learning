@@ -6,10 +6,16 @@ import torchvision.transforms as transforms
 from torchvision.models import resnet18
 from PIL import Image
 
-st.set_page_config(page_title="Self-Supervised Learning", page_icon="🧠")
+st.set_page_config(
+    page_title="CIFAR-10 Image Classifier",
+    page_icon="🧠",
+    layout="centered"
+)
 
-st.title("Self-Supervised Learning for Visual Representation")
-st.write("Upload an image to classify it using the trained CIFAR-10 model.")
+st.title("🧠 Self-Supervised Learning for Visual Representation")
+st.write(
+    "Upload an image to classify it into one of the 10 CIFAR-10 classes."
+)
 
 classes = [
     "airplane", "automobile", "bird", "cat", "deer",
@@ -21,21 +27,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 @st.cache_resource
 def load_model():
     model = resnet18(weights=None)
-    model.conv1 = nn.Conv2d(
-        3, 64, kernel_size=3, stride=1, padding=1, bias=False
-    )
-    model.maxpool = nn.Identity()
     model.fc = nn.Linear(model.fc.in_features, 10)
 
-    model.load_state_dict(
-        torch.load("supervised_model.pth", map_location=device)
+    checkpoint = torch.load(
+        "supervised_model_full.pth",
+        map_location=device
     )
+    model.load_state_dict(checkpoint)
     model.to(device)
     model.eval()
     return model
 
 transform = transforms.Compose([
-    transforms.Resize((32, 32)),
+    transforms.Resize((96, 96)),
     transforms.ToTensor(),
     transforms.Normalize(
         (0.4914, 0.4822, 0.4465),
@@ -44,15 +48,15 @@ transform = transforms.Compose([
 ])
 
 uploaded_file = st.file_uploader(
-    "Choose an image",
+    "Upload an image",
     type=["jpg", "jpeg", "png"]
 )
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image", use_container_width=True)
+    st.image(image, caption="Uploaded Image", width=300)
 
-    if st.button("Classify Image"):
+    if st.button("Classify Image", type="primary"):
         try:
             model = load_model()
             tensor = transform(image).unsqueeze(0).to(device)
@@ -62,14 +66,38 @@ if uploaded_file is not None:
                 probabilities = torch.softmax(outputs, dim=1)[0]
                 predicted_index = probabilities.argmax().item()
 
-            st.success(f"Predicted class: {classes[predicted_index]}")
-            st.write(
-                f"Confidence: {probabilities[predicted_index].item() * 100:.2f}%"
+            st.success(
+                f"Predicted class: {classes[predicted_index]}"
+            )
+            st.metric(
+                "Model confidence",
+                f"{probabilities[predicted_index].item() * 100:.2f}%"
             )
 
             st.subheader("Class probabilities")
-            for i, name in enumerate(classes):
-                st.write(f"{name}: {probabilities[i].item() * 100:.2f}%")
+
+            probability_data = {
+                "Class": classes,
+                "Probability (%)": [
+                    round(probabilities[i].item() * 100, 2)
+                    for i in range(len(classes))
+                ]
+            }
+
+            st.bar_chart(
+                probability_data,
+                x="Class",
+                y="Probability (%)",
+                horizontal=True
+            )
+
+            with st.expander("View exact probabilities"):
+                st.dataframe(
+                    probability_data,
+                    hide_index=True,
+                    use_container_width=True
+                )
 
         except Exception as error:
-            st.error(f"Error loading model: {error}")
+            st.error("Could not classify this image.")
+            st.exception(error)

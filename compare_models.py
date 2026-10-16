@@ -2,13 +2,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-models = ["SimCLR", "Supervised ResNet18"]
+# Actual evaluation results
+models = ["SimCLR", "Supervised ResNet18 (Full)"]
 
-# Replace these values with your actual evaluation results
-accuracy = [47.18, 0.0]
-precision = [0.4900, 0.0]
-recall = [0.4718, 0.0]
-f1_score = [0.4681, 0.0]
+accuracy = [47.18, 89.40]
+precision = [0.4900, 0.8951]
+recall = [0.4718, 0.8940]
+f1_score = [0.4681, 0.8936]
 
 results = pd.DataFrame({
     "Model": models,
@@ -27,7 +27,7 @@ print("\nSaved: model_comparison.csv")
 metrics = ["Accuracy (%)", "Precision", "Recall", "F1-Score"]
 
 for metric in metrics:
-    plt.figure(figsize=(7, 4))
+    plt.figure(figsize=(8, 5))
     plt.bar(results["Model"], results[metric])
     plt.title(f"Model Comparison - {metric}")
     plt.ylabel(metric)
